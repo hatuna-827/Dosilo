@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Dosilo",
+  "version": "1.0.0",
+  "description": "Bookmark Controller",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "contextMenus"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "icons": {
+    "16": "images/icon-16.png",
+    "128": "images/icon-128.png"
+  }
+}

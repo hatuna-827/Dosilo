@@ -1,0 +1,150 @@
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0px;
+	min-height: 300px;
+}
+
+#main {
+	height: 100vh;
+	overflow-x: scroll;
+	overflow-y: hidden;
+	white-space: pre;
+}
+
+.wrapper {
+	position: relative;
+	display: inline-block;
+	padding: 40px 15px 10px;
+	height: 100%;
+	width: 250px;
+	overflow: hidden;
+	border-right: 1px solid #222;
+}
+
+.close-button,
+.collapse-button {
+	position: absolute;
+	display: flex;
+	top: 10px;
+	height: 20px;
+	width: 20px;
+	align-items: center;
+	justify-content: center;
+	user-select: none;
+	background-color: #ccc;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.collapse-button {
+	left: 10px;
+}
+
+.close-button {
+	right: 10px;
+}
+
+.folder-title {
+	position: absolute;
+	top: 5px;
+	left: 40px;
+	right: 40px;
+	height: 30px;
+	font-size: 15px;
+	line-height: 30px;
+	font-weight: 600;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	cursor: pointer;
+}
+
+.content {
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.target {
+	display: block;
+	padding-left: 5px;
+	font-size: 12px;
+	line-height: 20px;
+	color: #222;
+	text-decoration: none;
+	cursor: pointer;
+	border-radius: 3px;
+}
+
+.folder-title:hover,
+.target:hover,
+.menu-target {
+	background-color: #eee;
+}
+
+.collapse {
+	width: 40px;
+}
+
+.collapse .collapse-button {
+	transform: rotate(180deg);
+}
+
+.collapse .close-button,
+.collapse .folder-title,
+.collapse .dots-button,
+.collapse .content {
+	display: none;
+}
+
+.menu {
+	position: fixed;
+	padding: 5px;
+	width: 200px;
+	background-color: #fff;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+}
+
+.menu div {
+	font-size: 12px;
+	line-height: 20px;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.menu div:hover {
+	background-color: #eee;
+}
+
+
+/*
+.link {
+	display: block;
+	text-decoration: none;
+	color: #000;
+	line-height: var(--line-size);
+	font-size: var(--font-size);
+}
+
+.link:hover {
+	text-decoration: underline;
+}
+
+details {
+	padding: 0px var(--nest-size);
+	color: #000;
+	line-height: var(--line-size);
+	font-size: var(--font-size);
+}
+
+details:open>summary {
+	background-color:#b5eb73;
+}
+
+summary {
+	margin-left: calc(var(--nest-size)*-1);
+} */
