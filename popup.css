@@ -52,6 +52,7 @@ body {
 	top: 5px;
 	left: 40px;
 	right: 40px;
+	padding: 0px 7px;
 	height: 30px;
 	font-size: 15px;
 	line-height: 30px;
@@ -60,6 +61,7 @@ body {
 	overflow-y: hidden;
 	scrollbar-width: none;
 	cursor: pointer;
+	border-radius: 3px;
 }
 
 .content {

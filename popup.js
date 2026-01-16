@@ -1,6 +1,6 @@
 "use strict"
 const container = document.getElementById("main")
-let folder_list = []
+let open_list = []
 let menu
 
 document.body.addEventListener('click', remove_menu)
@@ -11,178 +11,150 @@ chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
 })
 
 function open_path(path) {
-  container.innerHTML = ""
-  folder_list = []
   chrome.bookmarks.getTree(([root]) => {
-    add_folder(root.id, 0, true)
-    open_folder(root, path, 0)
-  })
-}
-
-function open_folder(data, path, node) {
-  if (node == path.length) { return }
-  const next = data.children.find(child => child.id === path[node])
-  if (!next) {
-    alert(`デフォルトのパスが見つかりません。(${path[node]})`)
-    if (node == 0) { open_path(['1']) }
-    return
-  }
-  add_folder(next.id, node + 1, node != path.length - 1)
-  open_folder(next, path, node + 1)
-}
-
-function add_folder(folder_id, node, collapse) {
-  chrome.bookmarks.getSubTree(folder_id, ([folder_data]) => {
-    const wrapper = document.createElement('div')
-    wrapper.className = "wrapper"
-    wrapper.dataset.id = folder_id
-    wrapper.dataset.node = node
-    if (collapse) { wrapper.classList.add("collapse") }
-    // collapse_button
-    const collapse_button = document.createElement('div')
-    collapse_button.className = "collapse-button"
-    collapse_button.textContent = "◀"
-    collapse_button.addEventListener('click', function () {
-      if (wrapper.classList.contains("collapse")) {
-        wrapper.classList.remove("collapse")
-      } else {
-        wrapper.classList.add("collapse")
+    container.innerHTML = ""
+    open_list = []
+    let node = 0
+    let data = root
+    while (node !== path.length) {
+      const next = data.children.find(child => child.id === path[node])
+      if (!next) {
+        alert("デフォルトのパスが見つかりません。")
+        path = path.slice(0, node + 1)
+        if (node == 0) { path = ['1'] }
+        break
       }
-    })
-    wrapper.appendChild(collapse_button)
-    // folder_title
-    const folder_title = document.createElement('div')
-    folder_title.className = "folder-title"
-    folder_title.textContent = folder_data.title
-    folder_title.addEventListener('contextmenu', function (e) {
-      add_menu(e, "title", folder_title, { node })
-    })
-    wrapper.appendChild(folder_title)
-    // close_button
-    if (node != 0) {
-      const close_button = document.createElement('div')
-      close_button.className = "close-button"
-      close_button.textContent = "✖"
-      close_button.addEventListener('click', function () { close(node) })
-      wrapper.appendChild(close_button)
+      data = next
+      ++node
     }
-    const content = document.createElement('div')
-    content.className = "content"
-    wrapper.appendChild(content)
-    add_content(wrapper)
-    folder_list.push(wrapper)
-    container.appendChild(wrapper)
+    add_wrapper('0', 0, true)
+    path.forEach((id, node) => {
+      add_wrapper(id, node + 1, node != path.length - 1)
+    })
   })
 }
 
-function add_content(wrapper) {
-  const folder_id = wrapper.dataset.id
-  const node = wrapper.dataset.node
+function add_wrapper(id, node, collapse) {
+  const wrapper = $(container, "wrapper")
+  open_list.push(wrapper)
+  wrapper.dataset.id = id
+  wrapper.dataset.node = node
+  if (collapse) { wrapper.classList.add("collapse") }
+  // collapse_button
+  const collapse_button = $(wrapper, "collapse-button", "◀")
+  collapse_button.addEventListener('click', function () {
+    if (wrapper.classList.contains("collapse"))
+      wrapper.classList.remove("collapse")
+    else
+      wrapper.classList.add("collapse")
+  })
+  // close_button
+  if (node !== 0) {
+    const close_button = $(wrapper, "close-button", "✖")
+    close_button.addEventListener('click', function () { close(node) })
+  }
+  // folder_title
+  const folder_title = $(wrapper, "folder-title")
+  folder_title.addEventListener('contextmenu', function (e) {
+    add_menu(e, "title", folder_title, { id, node })
+  })
+  const content = $(wrapper, "content")
+  render_wrapper(node)
+}
+
+function render_wrapper(node) {
+  const wrapper = open_list[node]
+  const folder_title = wrapper.querySelector(".folder-title")
   const content = wrapper.querySelector(".content")
-  content.innerHTML = ""
-  chrome.bookmarks.getSubTree(folder_id, ([folder_data]) => {
+  chrome.bookmarks.getSubTree(wrapper.dataset.id, ([folder_data]) => {
+    folder_title.textContent = folder_data.title
+    content.innerHTML = ""
     folder_data.children.forEach((child) => {
       if (child.url) {
-        const link = document.createElement('span')
-        link.className = "link target"
-        link.textContent = "🔗 " + (child.title || "(no title)")
+        const link = $(content, "link target", "🔗 " + (child.title || "(no title)"), 'span')
         link.addEventListener('click', function () {
           chrome.tabs.create({ url: child.url, active: true })
         })
-        link.addEventListener('contextmenu', function (e) {
-          add_menu(e, "url", link, { child })
+        link.addEventListener('contextmenu', function () {
+          add_menu(e, "url", link, { id: child.id })
         })
-        content.appendChild(link)
       } else if (child.children) {
-        const folder = document.createElement('span')
-        folder.className = "folder target"
-        folder.textContent = "📁 " + (child.title || "(no title)")
+        const folder = $(content, "folder target", "📁 " + (child.title || "(no title)"), 'span')
         folder.addEventListener('click', function () {
           close(node + 1)
-          add_folder(child.id, node + 1)
+          add_wrapper(child.id, node + 1, false)
         })
         folder.addEventListener('contextmenu', function (e) {
-          add_menu(e, "folder", folder, { child })
+          add_menu(e, "folder", folder, { id: child.id, node })
         })
-        content.appendChild(folder)
       }
     })
   })
 }
 
-function rerender() {
-  container.childNodes.forEach(wrapper => add_content(wrapper))
+function close(index) {
+  open_list.slice(index).forEach((folder) => { folder.remove() })
+  open_list.splice(index, open_list.length - index)
 }
 
-function add_menu(e, type, target, { child, node }) {
+function add_menu(e, type, target, { id, node }) {
   e.preventDefault()
   remove_menu()
   target.classList.add("menu-target")
   menu = document.createElement('div')
   menu.className = "menu"
-  if (type === "url") {
-  }
-  else if (type === "folder") {
-    const open_links = document.createElement('div')
-    open_links.textContent = "すべてを開く"
-    open_links.addEventListener('click', function () {
-      oepn_urls(child, false)
-    })
-    menu.appendChild(open_links)
-    const open_tree = document.createElement('div')
-    open_tree.textContent = "フォルダ内をすべて開く"
-    open_tree.addEventListener('click', function () {
-      oepn_urls(child, true)
-    })
-    menu.appendChild(open_tree)
-    const sort_name = document.createElement('div')
-    sort_name.textContent = "タイトルでソートする"
-    sort_name.addEventListener('click', function () {
-      chrome.bookmarks.getChildren(child.id, (children) => {
-        children.sort((a, b) => a.title.localeCompare(b.title))
-        children.forEach((child, i) => {
-          chrome.bookmarks.move(child.id, {
-            parentId: child.id,
-            index: i
+  const menu_data = {
+    title: [
+      {
+        content: "デフォルトのフォルダに設定する", command: (id, node) => {
+          chrome.storage.local.set({ Dosilo: { default_path: open_list.map(el => el.dataset.id).slice(1, node + 1) } })
+        },
+      }
+    ],
+    url: [
+      {
+        content: "削除", command: (id, node) => {
+          chrome.bookmarks.remove(id)
+          render_wrapper(node)
+        }
+      },
+    ],
+    folder: [
+      { content: "すべて開く", command: (id) => { open_urls(id, false) } },
+      { content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
+      {
+        content: "タイトルでソートする",
+        command: (id, node) => {
+          chrome.bookmarks.getChildren(id, (children) => {
+            children.sort((a, b) => a.title.localeCompare(b.title))
+            children.forEach((child, i) => {
+              chrome.bookmarks.move(child.id, {
+                parentId: id,
+                index: i
+              })
+            })
+            render_wrapper(node + 1)
           })
-        })
-        rerender()
-      })
-    })
-    menu.appendChild(sort_name)
+        }
+      },
+      {
+        content: "削除", command: (id, node) => {
+          chrome.bookmarks.removeTree(id)
+          render_wrapper(node)
+          if (open_list[node + 1].dataset.id === id) { close(node + 1) }
+        }
+      },
+    ]
   }
-  else if (type === "title") {
-    const set_default = document.createElement('div')
-    set_default.textContent = "デフォルトのフォルダに設定する"
-    set_default.addEventListener('click', function () {
-      let path = []
-      container.childNodes.forEach(el => {
-        path.push(el.dataset.id)
-      })
-      chrome.storage.local.set({ Dosilo: { default_path: path.slice(1, node + 1) } })
-    })
-    menu.appendChild(set_default)
-  }
+  menu_data[type].forEach(({ content, command }) => {
+    const item = document.createElement('div')
+    item.textContent = content
+    item.addEventListener('click', function () { command(id, node) })
+    menu.appendChild(item)
+  })
   document.body.appendChild(menu)
   menu.style.left = e.pageX - (window.innerWidth < e.pageX + menu.offsetWidth ? menu.offsetWidth : 0) + "px"
   menu.style.top = e.pageY - (window.innerHeight < e.pageY + menu.offsetHeight ? menu.offsetHeight : 0) + "px"
-}
-
-function oepn_urls(node, tree) {
-  node.children.forEach(child => {
-    if (child.url) {
-      chrome.tabs.create({ url: child.url, active: false })
-    } else if (tree && child.children) {
-      oepn_urls(child, true)
-    }
-  })
-}
-
-function close(index) {
-  folder_list.slice(index).forEach((folder) => {
-    folder.remove()
-  })
-  folder_list.splice(index, folder_list.length - index)
 }
 
 function remove_menu() {
@@ -192,4 +164,24 @@ function remove_menu() {
     menu.remove()
     menu = null
   }
+}
+
+function open_urls(id, tree) {
+  chrome.bookmarks.getChildren(id, (children) => {
+    children.forEach(child => {
+      if (child.url) {
+        chrome.tabs.create({ url: child.url, active: false })
+      } else if (tree && child.children) {
+        open_urls(child.id, true)
+      }
+    })
+  })
+}
+
+function $(parentElement, className, textContent, tagName) {
+  const result = document.createElement(tagName || 'div')
+  result.className = className || ''
+  result.textContent = textContent || ''
+  parentElement.appendChild(result)
+  return result
 }
