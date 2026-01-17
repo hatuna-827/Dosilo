@@ -56,7 +56,7 @@ function add_wrapper(id, node, collapse) {
   // folder_title
   const folder_title = $(wrapper, "folder-title")
   folder_title.addEventListener('contextmenu', function (e) {
-    add_menu(e, "title", folder_title, { id, node })
+    add_menu(e, "title", folder_title, id, node)
   })
   const content = $(wrapper, "content")
   render_wrapper(node)
@@ -75,8 +75,8 @@ function render_wrapper(node) {
         link.addEventListener('click', function () {
           chrome.tabs.create({ url: child.url, active: true })
         })
-        link.addEventListener('contextmenu', function () {
-          add_menu(e, "url", link, { id: child.id })
+        link.addEventListener('contextmenu', function (e) {
+          add_menu(e, "url", link, child.id, node)
         })
       } else if (child.children) {
         const folder = $(content, "folder target", "📁 " + (child.title || "(no title)"), 'span')
@@ -85,7 +85,7 @@ function render_wrapper(node) {
           add_wrapper(child.id, node + 1, false)
         })
         folder.addEventListener('contextmenu', function (e) {
-          add_menu(e, "folder", folder, { id: child.id, node })
+          add_menu(e, "folder", folder, child.id, node)
         })
       }
     })
@@ -97,7 +97,7 @@ function close(index) {
   open_list.splice(index, open_list.length - index)
 }
 
-function add_menu(e, type, target, { id, node }) {
+function add_menu(e, type, target, id, node) {
   e.preventDefault()
   remove_menu()
   target.classList.add("menu-target")
