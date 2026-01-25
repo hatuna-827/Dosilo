@@ -60,6 +60,7 @@ function add_wrapper(id, node, collapse) {
   })
   const content = $(wrapper, "content")
   render_wrapper(node)
+  wrapper.scrollIntoView()
 }
 
 function render_wrapper(node) {
@@ -134,6 +135,21 @@ function add_menu(e, type, target, id, node) {
               })
             })
             render_wrapper(node + 1)
+          })
+        }
+      },
+      {
+        content: "ここに展開", command: (id, node) => {
+          chrome.bookmarks.getSubTree(id, ([folder_data]) => {
+            folder_data.children.forEach((child, i) => {
+              chrome.bookmarks.create({
+                index: folder_data.index + i + 1,
+                parentId: folder_data.parentId,
+                title: child.title,
+                url: child.url
+              })
+              render_wrapper(node)
+            })
           })
         }
       },
