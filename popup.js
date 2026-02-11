@@ -1,9 +1,85 @@
 "use strict"
-const container = document.getElementById("main")
+const main = document.getElementById("main")
 let open_list = []
 let menu
+let dragEl = null
+
+const menu_data = {
+  title: [
+    {
+      type: "command", content: "デフォルトのフォルダに設定する", command: (id, node) => {
+        chrome.storage.local.set({ Dosilo: { default_path: open_list.map(el => el.dataset.id).slice(1, node + 1) } })
+      }
+    }
+  ],
+  url: [
+    {
+      type: "command", content: "削除", command: (id, node) => {
+        chrome.bookmarks.remove(id)
+        render_wrapper(node)
+      }
+    },
+  ],
+  folder: [
+    { type: "command", content: "すべて開く", command: (id) => { open_urls(id, false) } },
+    { type: "command", content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
+    { type: "partition" },
+    { type: "command", content: "名前を変更", command: (id, node) => { } },
+    {
+      type: "command", content: "タイトルでソートする", command: (id, node) => {
+        chrome.bookmarks.getChildren(id, (children) => {
+          children.sort((a, b) => a.title.localeCompare(b.title))
+          children.forEach((child, i) => {
+            chrome.bookmarks.move(child.id, {
+              parentId: id,
+              index: i
+            })
+          })
+          render_wrapper(node + 1)
+        })
+      }
+    },
+    {
+      type: "command", content: "ここに展開", command: (id, node) => {
+        chrome.bookmarks.getSubTree(id, ([folder_data]) => {
+          folder_data.children.forEach((child, i) => {
+            chrome.bookmarks.create({
+              index: folder_data.index + i + 1,
+              parentId: folder_data.parentId,
+              title: child.title,
+              url: child.url
+            })
+            render_wrapper(node)
+          })
+        })
+      }
+    },
+    { type: "partition" },
+    {
+      type: "command", content: "削除", command: (id, node) => {
+        chrome.bookmarks.removeTree(id)
+        render_wrapper(node)
+        if (open_list[node + 1].dataset.id === id) { close(node + 1) }
+      }
+    },
+  ]
+}
 
 document.body.addEventListener('click', remove_menu)
+
+
+function getDragAfterElement(container, y) {
+  const elements = [...container.querySelectorAll(".entry:not(.dragging)")]
+  return elements.reduce((closest, child, i) => {
+    const size = child.getBoundingClientRect()
+    const offset = y - size.top - size.height / 2
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child, index: i }
+    } else {
+      return closest
+    }
+  }, { offset: Number.NEGATIVE_INFINITY, index: container.childElementCount })
+}
 
 chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
   const default_path = Dosilo.default_path || ['1']
@@ -12,7 +88,7 @@ chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
 
 function open_path(path) {
   chrome.bookmarks.getTree(([root]) => {
-    container.innerHTML = ""
+    main.innerHTML = ""
     open_list = []
     let node = 0
     let data = root
@@ -35,6 +111,7 @@ function open_path(path) {
 }
 
 function add_wrapper(id, node, collapse) {
+  const container = $(main, "container")
   const wrapper = $(container, "wrapper")
   open_list.push(wrapper)
   wrapper.dataset.id = id
@@ -61,6 +138,31 @@ function add_wrapper(id, node, collapse) {
   const content = $(wrapper, "content")
   render_wrapper(node)
   wrapper.scrollIntoView()
+  // content.addEventListener("dragstart", (e) => {
+  //   if (e.target.classList && e.target.classList.contains("entry-move")) {
+  //     dragEl = e.target.closest(".entry")
+  //     dragEl.classList.add("dragging")
+  //     e.dataTransfer.effectAllowed = "move"
+  //     e.dataTransfer.setDragImage(new Image(), 0, 0)
+  //   } else {
+  //     e.preventDefault()
+  //   }
+  // })
+  // content.addEventListener("dragend", (e) => {
+  //   if (!dragEl) return
+  //   const afterIndex = getDragAfterElement(content, e.clientY).index
+  //   const [data] = .splice(dragEl.dataset.index, 1)
+  //   .splice(afterIndex, 0, data)
+  //   render_wrapper(node)
+  //   dragEl.classList.remove("dragging")
+  //   dragEl = null
+  // })
+  // content.addEventListener("dragover", (e) => {
+  //   e.preventDefault()
+  //   if (!dragEl) return
+  //   const afterElement = getDragAfterElement(content, e.clientY).element
+  //   content.insertBefore(dragEl, afterElement)
+  // })
 }
 
 function render_wrapper(node) {
@@ -71,22 +173,37 @@ function render_wrapper(node) {
     folder_title.textContent = folder_data.title
     content.innerHTML = ""
     folder_data.children.forEach((child) => {
+      const entry = document.createElement('div')
+      entry.className = "entry"
+      content.appendChild(entry)
+      const move = document.createElement('span')
+      move.className = "entry-move"
+      // move.draggable = true
+      entry.appendChild(move)
       if (child.url) {
-        const link = $(content, "link target", "🔗 " + (child.title || "(no title)"), 'span')
-        link.addEventListener('click', function () {
+        move.textContent = "🔗"
+        const link = document.createElement('span')
+        link.className = "link entry-title"
+        link.textContent = child.title || "(no title)"
+        entry.appendChild(link)
+        entry.addEventListener('click', function () {
           chrome.tabs.create({ url: child.url, active: true })
         })
-        link.addEventListener('contextmenu', function (e) {
-          add_menu(e, "url", link, child.id, node)
+        entry.addEventListener('contextmenu', function (e) {
+          add_menu(e, "url", entry, child.id, node)
         })
       } else if (child.children) {
-        const folder = $(content, "folder target", "📁 " + (child.title || "(no title)"), 'span')
-        folder.addEventListener('click', function () {
+        move.textContent = "📁"
+        const folder = document.createElement('span')
+        folder.className = "folder entry-title"
+        folder.textContent = child.title || "(no title)"
+        entry.appendChild(folder)
+        entry.addEventListener('click', function () {
           close(node + 1)
           add_wrapper(child.id, node + 1, false)
         })
-        folder.addEventListener('contextmenu', function (e) {
-          add_menu(e, "folder", folder, child.id, node)
+        entry.addEventListener('contextmenu', function (e) {
+          add_menu(e, "folder", entry, child.id, node)
         })
       }
     })
@@ -104,73 +221,36 @@ function add_menu(e, type, target, id, node) {
   target.classList.add("menu-target")
   menu = document.createElement('div')
   menu.className = "menu"
-  const menu_data = {
-    title: [
-      {
-        content: "デフォルトのフォルダに設定する", command: (id, node) => {
-          chrome.storage.local.set({ Dosilo: { default_path: open_list.map(el => el.dataset.id).slice(1, node + 1) } })
-        },
-      }
-    ],
-    url: [
-      {
-        content: "削除", command: (id, node) => {
-          chrome.bookmarks.remove(id)
-          render_wrapper(node)
-        }
-      },
-    ],
-    folder: [
-      { content: "すべて開く", command: (id) => { open_urls(id, false) } },
-      { content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
-      {
-        content: "タイトルでソートする",
-        command: (id, node) => {
-          chrome.bookmarks.getChildren(id, (children) => {
-            children.sort((a, b) => a.title.localeCompare(b.title))
-            children.forEach((child, i) => {
-              chrome.bookmarks.move(child.id, {
-                parentId: id,
-                index: i
-              })
-            })
-            render_wrapper(node + 1)
-          })
-        }
-      },
-      {
-        content: "ここに展開", command: (id, node) => {
-          chrome.bookmarks.getSubTree(id, ([folder_data]) => {
-            folder_data.children.forEach((child, i) => {
-              chrome.bookmarks.create({
-                index: folder_data.index + i + 1,
-                parentId: folder_data.parentId,
-                title: child.title,
-                url: child.url
-              })
-              render_wrapper(node)
-            })
-          })
-        }
-      },
-      {
-        content: "削除", command: (id, node) => {
-          chrome.bookmarks.removeTree(id)
-          render_wrapper(node)
-          if (open_list[node + 1].dataset.id === id) { close(node + 1) }
-        }
-      },
-    ]
-  }
-  menu_data[type].forEach(({ content, command }) => {
-    const item = document.createElement('div')
-    item.textContent = content
-    item.addEventListener('click', function () { command(id, node) })
-    menu.appendChild(item)
-  })
+  add_menu_items(menu_data[type], menu, id, node)
   document.body.appendChild(menu)
   menu.style.left = e.pageX - (window.innerWidth < e.pageX + menu.offsetWidth ? menu.offsetWidth : 0) + "px"
   menu.style.top = e.pageY - (window.innerHeight < e.pageY + menu.offsetHeight ? menu.offsetHeight : 0) + "px"
+}
+
+function add_menu_items(menu_items, pos, id, node) {
+  menu_items.forEach((menu_item) => {
+    const type = menu_item.type
+    if (type === "command") {
+      const item = document.createElement('div')
+      item.className = "item command"
+      item.textContent = menu_item.content
+      item.addEventListener('click', function () { menu_item.command(id, node) })
+      pos.appendChild(item)
+    } else if (type === "partition") {
+      const hr = document.createElement('hr')
+      hr.className = "partition"
+      pos.appendChild(hr)
+    } else if (type === "group") {
+      const item = document.createElement('div')
+      item.className = "item group"
+      item.textContent = menu_item.content
+      const group_items = document.createElement('div')
+      group_items.className = "group-items"
+      add_menu_items(menu_item.children, group_items, id, node)
+      item.appendChild(group_items)
+      pos.appendChild(item)
+    }
+  })
 }
 
 function remove_menu() {
