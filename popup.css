@@ -47,7 +47,7 @@ body {
 
 #main {
 	height: 100vh;
-	overflow-x: scroll;
+	overflow-x: auto;
 	overflow-y: hidden;
 	white-space: pre;
 }
@@ -107,9 +107,12 @@ body {
 }
 
 .content {
+	padding: 10px;
 	height: 100%;
 	overflow-x: hidden;
 	overflow-y: auto;
+	border: 1px solid #ccc;
+	border-radius: 3px;
 }
 
 .entry {

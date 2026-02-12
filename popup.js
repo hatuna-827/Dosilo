@@ -3,16 +3,26 @@ const main = document.getElementById("main")
 let open_list = []
 let menu
 let dragEl = null
+let dragParent = {}
 
 const menu_data = {
   title: [
     {
-      type: "command", content: "デフォルトのフォルダに設定する", command: (id, node) => {
-        chrome.storage.local.set({ Dosilo: { default_path: open_list.map(el => el.dataset.id).slice(1, node + 1) } })
+      type: "command", content: "デフォルトのフォルダに設定", command: (id, node) => {
+        chrome.storage.local.set({
+          Dosilo: {
+            default_path: open_list.map(el => el.dataset.id).slice(1, node + 1)
+          }
+        })
       }
-    }
+    },
+    { type: "partition" },
+    { type: "command", content: "名前を変更", command: (id, node) => { } },
+    { type: "command", content: "リンクを追加", command: (id, node) => { } },
+    { type: "command", content: "フォルダを追加", command: (id, node) => { } },
   ],
   url: [
+    { type: "command", content: "編集", command: (id, node) => { } },
     {
       type: "command", content: "削除", command: (id, node) => {
         chrome.bookmarks.remove(id)
@@ -26,16 +36,11 @@ const menu_data = {
     { type: "partition" },
     { type: "command", content: "名前を変更", command: (id, node) => { } },
     {
-      type: "command", content: "タイトルでソートする", command: (id, node) => {
+      type: "command", content: "タイトルでソート", command: (id, node) => {
         chrome.bookmarks.getChildren(id, (children) => {
           children.sort((a, b) => a.title.localeCompare(b.title))
-          children.forEach((child, i) => {
-            chrome.bookmarks.move(child.id, {
-              parentId: id,
-              index: i
-            })
-          })
-          render_wrapper(node + 1)
+          children.forEach((child, i) => { chrome.bookmarks.move(child.id, { parentId: id, index: i }) })
+          if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
         })
       }
     },
@@ -67,7 +72,6 @@ const menu_data = {
 
 document.body.addEventListener('click', remove_menu)
 
-
 function getDragAfterElement(container, y) {
   const elements = [...container.querySelectorAll(".entry:not(.dragging)")]
   return elements.reduce((closest, child, i) => {
@@ -78,7 +82,7 @@ function getDragAfterElement(container, y) {
     } else {
       return closest
     }
-  }, { offset: Number.NEGATIVE_INFINITY, index: container.childElementCount })
+  }, { offset: Number.NEGATIVE_INFINITY, index: container.childElementCount - 1 })
 }
 
 chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
@@ -97,7 +101,7 @@ function open_path(path) {
       if (!next) {
         alert("デフォルトのパスが見つかりません。")
         path = path.slice(0, node + 1)
-        if (node == 0) { path = ['1'] }
+        if (node === 0) { path = ['1'] }
         break
       }
       data = next
@@ -105,7 +109,7 @@ function open_path(path) {
     }
     add_wrapper('0', 0, true)
     path.forEach((id, node) => {
-      add_wrapper(id, node + 1, node != path.length - 1)
+      add_wrapper(id, node + 1, node !== path.length - 1)
     })
   })
 }
@@ -138,31 +142,39 @@ function add_wrapper(id, node, collapse) {
   const content = $(wrapper, "content")
   render_wrapper(node)
   wrapper.scrollIntoView()
-  // content.addEventListener("dragstart", (e) => {
-  //   if (e.target.classList && e.target.classList.contains("entry-move")) {
-  //     dragEl = e.target.closest(".entry")
-  //     dragEl.classList.add("dragging")
-  //     e.dataTransfer.effectAllowed = "move"
-  //     e.dataTransfer.setDragImage(new Image(), 0, 0)
-  //   } else {
-  //     e.preventDefault()
-  //   }
-  // })
-  // content.addEventListener("dragend", (e) => {
-  //   if (!dragEl) return
-  //   const afterIndex = getDragAfterElement(content, e.clientY).index
-  //   const [data] = .splice(dragEl.dataset.index, 1)
-  //   .splice(afterIndex, 0, data)
-  //   render_wrapper(node)
-  //   dragEl.classList.remove("dragging")
-  //   dragEl = null
-  // })
-  // content.addEventListener("dragover", (e) => {
-  //   e.preventDefault()
-  //   if (!dragEl) return
-  //   const afterElement = getDragAfterElement(content, e.clientY).element
-  //   content.insertBefore(dragEl, afterElement)
-  // })
+  content.addEventListener('dragstart', function (e) {
+    if (e.target.classList && e.target.classList.contains("entry-move")) {
+      dragEl = e.target.closest(".entry")
+      dragEl.classList.add("dragging")
+      dragParent = { node, open: (open_list[node + 1] && (dragEl.dataset.id === open_list[node + 1].dataset.id)) }
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setDragImage(new Image(), 0, 0)
+    } else {
+      e.preventDefault()
+    }
+  })
+  content.addEventListener('dragend', function (e) {
+    if (!dragEl) return
+    if (dragParent.open && dragParent.node < node) return
+    const afterIndex = getDragAfterElement(content, e.clientY).index
+    chrome.bookmarks.move(dragEl.dataset.id, { parentId: id })
+    chrome.bookmarks.move(dragEl.dataset.id, { index: afterIndex, parentId: id })
+    render_wrapper(dragParent.node)
+    render_wrapper(node)
+    dragEl.classList.remove("dragging")
+    dragEl = null
+    dragParent = {}
+  })
+  content.addEventListener('dragover', function (e) {
+    e.preventDefault()
+    if (!dragEl) return
+    if (dragParent.open && dragParent.node < node) return
+    const afterElement = getDragAfterElement(content, e.clientY).element
+    content.insertBefore(dragEl, afterElement)
+  })
+  content.addEventListener('contextmenu', function (e) {
+    add_menu(e, "title", this, id, node)
+  })
 }
 
 function render_wrapper(node) {
@@ -175,10 +187,11 @@ function render_wrapper(node) {
     folder_data.children.forEach((child) => {
       const entry = document.createElement('div')
       entry.className = "entry"
+      entry.dataset.id = child.id
       content.appendChild(entry)
       const move = document.createElement('span')
       move.className = "entry-move"
-      // move.draggable = true
+      move.draggable = true
       entry.appendChild(move)
       if (child.url) {
         move.textContent = "🔗"
@@ -190,7 +203,7 @@ function render_wrapper(node) {
           chrome.tabs.create({ url: child.url, active: true })
         })
         entry.addEventListener('contextmenu', function (e) {
-          add_menu(e, "url", entry, child.id, node)
+          add_menu(e, "url", this, child.id, node)
         })
       } else if (child.children) {
         move.textContent = "📁"
@@ -203,7 +216,7 @@ function render_wrapper(node) {
           add_wrapper(child.id, node + 1, false)
         })
         entry.addEventListener('contextmenu', function (e) {
-          add_menu(e, "folder", entry, child.id, node)
+          add_menu(e, "folder", this, child.id, node)
         })
       }
     })
@@ -217,6 +230,7 @@ function close(index) {
 
 function add_menu(e, type, target, id, node) {
   e.preventDefault()
+  e.stopPropagation()
   remove_menu()
   target.classList.add("menu-target")
   menu = document.createElement('div')
