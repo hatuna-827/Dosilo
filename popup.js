@@ -18,11 +18,54 @@ const menu_data = {
     },
     { type: "partition" },
     { type: "command", content: "名前を変更", command: (id, node) => { } },
-    { type: "command", content: "リンクを追加", command: (id, node) => { } },
-    { type: "command", content: "フォルダを追加", command: (id, node) => { } },
+    {
+      type: "command", content: "リンクを追加", command: (id, node) => {
+        form(
+          "新しいリンク",
+          [
+            { title: "名前", type: "string", default_value: document.title },
+            { title: "URL", type: "string", default_value: window.location.href },
+          ],
+          "追加",
+          (title, url) => {
+            chrome.bookmarks.create({ parentId: id, title, url })
+            render_wrapper(node)
+          }
+        )
+      }
+    },
+    {
+      type: "command", content: "フォルダを追加", command: (id, node) => {
+        form(
+          "新しいフォルダ",
+          [{ title: "名前", type: "string", default_value: "新しいフォルダ" }],
+          "追加",
+          (title) => {
+            chrome.bookmarks.create({ parentId: id, title })
+            render_wrapper(node)
+          }
+        )
+      }
+    },
   ],
   url: [
-    { type: "command", content: "編集", command: (id, node) => { } },
+    {
+      type: "command", content: "編集", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          form(
+            "リンクの編集",
+            [
+              { title: "名前", type: "string", default_value: data.title },
+              { title: "URL", type: "string", default_value: data.url },
+            ],
+            "保存",
+            (title, url) => {
+              chrome.bookmarks.update(id, { title, url })
+              render_wrapper(node)
+            })
+        })
+      }
+    },
     {
       type: "command", content: "削除", command: (id, node) => {
         chrome.bookmarks.remove(id)
@@ -34,18 +77,23 @@ const menu_data = {
     { type: "command", content: "すべて開く", command: (id) => { open_urls(id, false) } },
     { type: "command", content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
     { type: "partition" },
-    { type: "command", content: "名前を変更", command: (id, node) => { } },
     {
-      type: "command", content: "タイトルでソート", command: (id, node) => {
-        chrome.bookmarks.getChildren(id, (children) => {
-          children.sort((a, b) => a.title.localeCompare(b.title))
-          children.forEach((child, i) => { chrome.bookmarks.move(child.id, { parentId: id, index: i }) })
-          if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
+      type: "command", content: "名前を変更", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          form(
+            "フォルダ名の編集",
+            [{ title: "名前", type: "string", default_value: data.title }],
+            "保存",
+            (title) => {
+              chrome.bookmarks.update(id, { title })
+              render_wrapper(node)
+              if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
+            })
         })
       }
     },
     {
-      type: "command", content: "ここに展開", command: (id, node) => {
+      type: "command", content: "展開", command: (id, node) => {
         chrome.bookmarks.getSubTree(id, ([folder_data]) => {
           folder_data.children.forEach((child, i) => {
             chrome.bookmarks.create({
@@ -59,12 +107,21 @@ const menu_data = {
         })
       }
     },
+    {
+      type: "command", content: "タイトルでソート", command: (id, node) => {
+        chrome.bookmarks.getChildren(id, (children) => {
+          children.sort((a, b) => a.title.localeCompare(b.title))
+          children.forEach((child, i) => { chrome.bookmarks.move(child.id, { parentId: id, index: i }) })
+          if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
+        })
+      }
+    },
     { type: "partition" },
     {
       type: "command", content: "削除", command: (id, node) => {
         chrome.bookmarks.removeTree(id)
         render_wrapper(node)
-        if (open_list[node + 1].dataset.id === id) { close(node + 1) }
+        if (open_list[node + 1] && open_list[node + 1].dataset.id === id) { close(node + 1) }
       }
     },
   ]
@@ -161,7 +218,6 @@ function add_wrapper(id, node, collapse) {
     chrome.bookmarks.move(dragEl.dataset.id, { index: afterIndex, parentId: id })
     render_wrapper(dragParent.node)
     render_wrapper(node)
-    dragEl.classList.remove("dragging")
     dragEl = null
     dragParent = {}
   })
@@ -267,6 +323,50 @@ function add_menu_items(menu_items, pos, id, node) {
   })
 }
 
+function form(form_title, arguments_data, button_title, call_back) {
+  let arguments_list = []
+  document.getElementById("popup-container").style.display = 'flex'
+  document.getElementById("popup-title").textContent = form_title
+  const content = document.getElementById("popup-content")
+  content.innerHTML = ""
+  const type_mapping = {
+    string: "text",
+    number: "number"
+  }
+  arguments_data.forEach(({ title, type, default_value }) => {
+    const wrapper = document.createElement('div')
+    wrapper.className = "form-wrapper"
+    const name = document.createElement('div')
+    name.className = "form-name"
+    name.textContent = title
+    const input = document.createElement('input')
+    input.className = "form-input"
+    input.type = type_mapping[type] ?? "text"
+    input.value = default_value
+    arguments_list.push(input)
+    wrapper.appendChild(name)
+    wrapper.appendChild(input)
+    content.appendChild(wrapper)
+  })
+  const buttons = document.getElementById("popup-buttons")
+  buttons.innerHTML = ""
+  const button = document.createElement('div')
+  button.className = "form-button"
+  button.textContent = button_title
+  button.addEventListener('click', function () {
+    call_back(...arguments_list.map((input) => input.type === "text" ? input.value : input.valueAsNumber))
+    document.getElementById("popup-container").style.display = 'none'
+  })
+  buttons.appendChild(button)
+  const cancel = document.createElement('div')
+  cancel.className = "form-cancel"
+  cancel.textContent = "キャンセル"
+  cancel.addEventListener('click', function () {
+    document.getElementById("popup-container").style.display = 'none'
+  })
+  buttons.appendChild(cancel)
+}
+
 function remove_menu() {
   if (menu) {
     const menu_target = document.querySelector(".menu-target")
@@ -281,7 +381,7 @@ function open_urls(id, tree) {
     children.forEach(child => {
       if (child.url) {
         chrome.tabs.create({ url: child.url, active: false })
-      } else if (tree && child.children) {
+      } else if (tree) {
         open_urls(child.id, true)
       }
     })

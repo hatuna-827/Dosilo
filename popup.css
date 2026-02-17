@@ -1,5 +1,6 @@
 * {
 	box-sizing: border-box;
+	color: #222;
 }
 
 body {
@@ -20,7 +21,7 @@ body {
 }
 
 #popup-wrapper {
-	padding: 30px;
+	padding: 20px;
 	min-height: 100px;
 	max-height: 400px;
 	width: 300px;
@@ -29,13 +30,14 @@ body {
 }
 
 #popup-title {
-	font-size: 20px;
+	font-size: 17px;
 	line-height: 20px;
 	font-weight: 700;
 	text-align: left;
 }
 
 #popup-content {
+	padding: 7px 5px;
 	max-height: 300px;
 	overflow-y: auto;
 }
@@ -43,6 +45,44 @@ body {
 #popup-buttons {
 	display: flex;
 	justify-content: right;
+	gap: 10px;
+}
+
+.form-wrapper {
+	display: flex;
+	align-items: center;
+	padding: 3px 0px;
+	height: 27px;
+}
+
+.form-name {
+	width: 50px;
+	font-size: 14px;
+	line-height: 25px;
+	text-align: center;
+}
+
+.form-input {
+	width: 200px;
+	font-size: 14px;
+	outline: none;
+}
+
+.form-button,
+.form-cancel {
+	padding: 2px 9px;
+	height: 27px;
+	font-size: 13px;
+	line-height: 23px;
+	border: 10px;
+	border-radius: 3px;
+	background-color: #ddd;
+	cursor: pointer;
+}
+
+.form-button {
+	color: #fff;
+	background-color: #333;
 }
 
 #main {
