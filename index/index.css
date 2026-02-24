@@ -68,8 +68,8 @@ body {
 	outline: none;
 }
 
-.form-button,
-.form-cancel {
+.form-button-main,
+.form-button {
 	padding: 2px 9px;
 	height: 27px;
 	font-size: 13px;
@@ -80,7 +80,7 @@ body {
 	cursor: pointer;
 }
 
-.form-button {
+.form-button-main {
 	color: #fff;
 	background-color: #333;
 }

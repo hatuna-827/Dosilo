@@ -1,4 +1,10 @@
 "use strict"
+/* - import ------------------------------------------------------------------------------------ */
+
+import { form, dialog } from "./popup.js"
+
+/* - const ------------------------------------------------------------------------------------- */
+
 const main = document.getElementById("main")
 let open_list = []
 let menu
@@ -17,34 +23,31 @@ const menu_data = {
       }
     },
     { type: "partition" },
-    { type: "command", content: "名前を変更", command: (id, node) => { } },
+    {
+      type: "command", content: "名前を変更", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          form(
+            "フォルダ名の編集",
+            [{ title: "名前", type: "string", default_value: data.title }],
+            "保存",
+            (title) => {
+              chrome.bookmarks.update(id, { title })
+                .catch((e) => { menu_error(e) })
+              render_wrapper(node)
+              render_wrapper(node - 1)
+            }
+          )
+        })
+      }
+    },
     {
       type: "command", content: "リンクを追加", command: (id, node) => {
-        form(
-          "新しいリンク",
-          [
-            { title: "名前", type: "string", default_value: document.title },
-            { title: "URL", type: "string", default_value: window.location.href },
-          ],
-          "追加",
-          (title, url) => {
-            chrome.bookmarks.create({ parentId: id, title, url })
-            render_wrapper(node)
-          }
-        )
+        add_new_link(node, id)
       }
     },
     {
       type: "command", content: "フォルダを追加", command: (id, node) => {
-        form(
-          "新しいフォルダ",
-          [{ title: "名前", type: "string", default_value: "新しいフォルダ" }],
-          "追加",
-          (title) => {
-            chrome.bookmarks.create({ parentId: id, title })
-            render_wrapper(node)
-          }
-        )
+        add_new_folder(node, id)
       }
     },
   ],
@@ -61,14 +64,32 @@ const menu_data = {
             "保存",
             (title, url) => {
               chrome.bookmarks.update(id, { title, url })
+                .catch((e) => { menu_error(e) })
               render_wrapper(node)
             })
         })
       }
     },
+    { type: "partition" },
+    {
+      type: "command", content: "リンクを追加", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          add_new_link(node, data.parentId, data.index + 1)
+        })
+      }
+    },
+    {
+      type: "command", content: "フォルダを追加", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          add_new_folder(node, data.parentId, data.index + 1)
+        })
+      }
+    },
+    { type: "partition" },
     {
       type: "command", content: "削除", command: (id, node) => {
         chrome.bookmarks.remove(id)
+          .catch((e) => { menu_error(e) })
         render_wrapper(node)
       }
     },
@@ -86,12 +107,29 @@ const menu_data = {
             "保存",
             (title) => {
               chrome.bookmarks.update(id, { title })
+                .catch((e) => { menu_error(e) })
               render_wrapper(node)
               if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
-            })
+            }
+          )
         })
       }
     },
+    {
+      type: "command", content: "リンクを追加", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          add_new_link(node, data.parentId, data.index + 1)
+        })
+      }
+    },
+    {
+      type: "command", content: "フォルダを追加", command: (id, node) => {
+        chrome.bookmarks.get(id, ([data]) => {
+          add_new_folder(node, data.parentId, data.index + 1)
+        })
+      }
+    },
+    { type: "partition" },
     {
       type: "command", content: "展開", command: (id, node) => {
         chrome.bookmarks.getSubTree(id, ([folder_data]) => {
@@ -102,6 +140,7 @@ const menu_data = {
               title: child.title,
               url: child.url
             })
+              .catch((e) => { menu_error(e) })
             render_wrapper(node)
           })
         })
@@ -111,7 +150,10 @@ const menu_data = {
       type: "command", content: "タイトルでソート", command: (id, node) => {
         chrome.bookmarks.getChildren(id, (children) => {
           children.sort((a, b) => a.title.localeCompare(b.title))
-          children.forEach((child, i) => { chrome.bookmarks.move(child.id, { parentId: id, index: i }) })
+          children.forEach((child, i) => {
+            chrome.bookmarks.move(child.id, { parentId: id, index: i })
+              .catch((e) => { menu_error(e) })
+          })
           if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
         })
       }
@@ -120,6 +162,7 @@ const menu_data = {
     {
       type: "command", content: "削除", command: (id, node) => {
         chrome.bookmarks.removeTree(id)
+          .catch((e) => { menu_error(e) })
         render_wrapper(node)
         if (open_list[node + 1] && open_list[node + 1].dataset.id === id) { close(node + 1) }
       }
@@ -127,7 +170,18 @@ const menu_data = {
   ]
 }
 
+/* - init -------------------------------------------------------------------------------------- */
+
+chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
+  const default_path = Dosilo.default_path || ['1']
+  open_path(default_path)
+})
+
+/* - add eventListener ------------------------------------------------------------------------- */
+
 document.body.addEventListener('click', remove_menu)
+
+/* - function ---------------------------------------------------------------------------------- */
 
 function getDragAfterElement(container, y) {
   const elements = [...container.querySelectorAll(".entry:not(.dragging)")]
@@ -142,10 +196,6 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY, index: container.childElementCount - 1 })
 }
 
-chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
-  const default_path = Dosilo.default_path || ['1']
-  open_path(default_path)
-})
 
 function open_path(path) {
   chrome.bookmarks.getTree(([root]) => {
@@ -156,8 +206,8 @@ function open_path(path) {
     while (node !== path.length) {
       const next = data.children.find(child => child.id === path[node])
       if (!next) {
-        alert("デフォルトのパスが見つかりません。")
-        path = path.slice(0, node + 1)
+        dialog("初期エラー", "デフォルトのパスが見つかりません。")
+        path = path.slice(0, node)
         if (node === 0) { path = ['1'] }
         break
       }
@@ -323,50 +373,6 @@ function add_menu_items(menu_items, pos, id, node) {
   })
 }
 
-function form(form_title, arguments_data, button_title, call_back) {
-  let arguments_list = []
-  document.getElementById("popup-container").style.display = 'flex'
-  document.getElementById("popup-title").textContent = form_title
-  const content = document.getElementById("popup-content")
-  content.innerHTML = ""
-  const type_mapping = {
-    string: "text",
-    number: "number"
-  }
-  arguments_data.forEach(({ title, type, default_value }) => {
-    const wrapper = document.createElement('div')
-    wrapper.className = "form-wrapper"
-    const name = document.createElement('div')
-    name.className = "form-name"
-    name.textContent = title
-    const input = document.createElement('input')
-    input.className = "form-input"
-    input.type = type_mapping[type] ?? "text"
-    input.value = default_value
-    arguments_list.push(input)
-    wrapper.appendChild(name)
-    wrapper.appendChild(input)
-    content.appendChild(wrapper)
-  })
-  const buttons = document.getElementById("popup-buttons")
-  buttons.innerHTML = ""
-  const button = document.createElement('div')
-  button.className = "form-button"
-  button.textContent = button_title
-  button.addEventListener('click', function () {
-    call_back(...arguments_list.map((input) => input.type === "text" ? input.value : input.valueAsNumber))
-    document.getElementById("popup-container").style.display = 'none'
-  })
-  buttons.appendChild(button)
-  const cancel = document.createElement('div')
-  cancel.className = "form-cancel"
-  cancel.textContent = "キャンセル"
-  cancel.addEventListener('click', function () {
-    document.getElementById("popup-container").style.display = 'none'
-  })
-  buttons.appendChild(cancel)
-}
-
 function remove_menu() {
   if (menu) {
     const menu_target = document.querySelector(".menu-target")
@@ -374,6 +380,17 @@ function remove_menu() {
     menu.remove()
     menu = null
   }
+}
+
+function menu_error(e) {
+  dialog(
+    "実行時エラー",
+    `
+    操作が失敗しました。
+    ルートブックマークフォルダーでは一部の操作を実行できません。
+    ${e}
+    `
+  )
 }
 
 function open_urls(id, tree) {
@@ -388,6 +405,34 @@ function open_urls(id, tree) {
   })
 }
 
+function add_new_link(node, parentId, index) {
+  form(
+    "新しいリンク",
+    [
+      { title: "名前", type: "string", default_value: document.title },
+      { title: "URL", type: "string", default_value: window.location.href },
+    ],
+    "追加",
+    (title, url) => {
+      chrome.bookmarks.create({ parentId, title, url, index })
+        .catch((e) => { menu_error(e) })
+      render_wrapper(node)
+    }
+  )
+}
+function add_new_folder(node, parentId, index) {
+  form(
+    "新しいフォルダ",
+    [{ title: "名前", type: "string", default_value: "新しいフォルダ" }],
+    "追加",
+    (title) => {
+      chrome.bookmarks.create({ parentId, title, index })
+        .catch((e) => { menu_error(e) })
+      render_wrapper(node)
+    }
+  )
+}
+
 function $(parentElement, className, textContent, tagName) {
   const result = document.createElement(tagName || 'div')
   result.className = className || ''
@@ -395,3 +440,4 @@ function $(parentElement, className, textContent, tagName) {
   parentElement.appendChild(result)
   return result
 }
+/* --------------------------------------------------------------------------------------------- */
