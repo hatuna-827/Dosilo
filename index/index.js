@@ -1,7 +1,9 @@
 "use strict"
+
 /* - import ------------------------------------------------------------------------------------ */
 
-import { form, dialog } from "./popup.js"
+import { form, dialog, menu_error } from "./popup.js"
+import { bookmark } from "./bookmark.js"
 
 /* - const ------------------------------------------------------------------------------------- */
 
@@ -25,16 +27,15 @@ const menu_data = {
     { type: "partition" },
     {
       type: "command", content: "名前を変更", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
+        bookmark.get(id, ([data]) => {
           form(
             "フォルダ名の編集",
             [{ title: "名前", type: "string", default_value: data.title }],
             "保存",
             (title) => {
-              chrome.bookmarks.update(id, { title })
-                .catch((e) => { menu_error(e) })
-              render_wrapper(node)
-              render_wrapper(node - 1)
+              bookmark.update(id, { title })
+              render_id(id)
+              render_id(data.parentId)
             }
           )
         })
@@ -42,19 +43,26 @@ const menu_data = {
     },
     {
       type: "command", content: "リンクを追加", command: (id, node) => {
-        add_new_link(node, id)
+        add_new_link(id)
       }
     },
     {
       type: "command", content: "フォルダを追加", command: (id, node) => {
-        add_new_folder(node, id)
+        add_new_folder(id)
       }
     },
+    { type: "partition" },
+    { type: "command", content: "タイトルでソート", command: (id, node) => { bookmark.sort.title(id) } },
+    { type: "command", content: "並び順を反転", command: (id, node) => { bookmark.sort.reverse(id) } },
+    { type: "command", content: "フォルダーを先頭へ", command: (id, node) => { bookmark.sort.folder(id) } },
+    { type: "partition" },
+    { type: "command", content: "重複したURLを削除", command: (id, node) => { bookmark.remove.duplicate(id) } },
+    { type: "command", content: "空のフォルダーを削除", command: (id, node) => { bookmark.remove.empty(id) } },
   ],
   url: [
     {
       type: "command", content: "編集", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
+        bookmark.get(id, ([data]) => {
           form(
             "リンクの編集",
             [
@@ -63,9 +71,8 @@ const menu_data = {
             ],
             "保存",
             (title, url) => {
-              chrome.bookmarks.update(id, { title, url })
-                .catch((e) => { menu_error(e) })
-              render_wrapper(node)
+              bookmark.update(id, { title, url })
+              render_node(node)
             })
         })
       }
@@ -73,24 +80,31 @@ const menu_data = {
     { type: "partition" },
     {
       type: "command", content: "リンクを追加", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
-          add_new_link(node, data.parentId, data.index + 1)
+        bookmark.get(id, ([data]) => {
+          add_new_link(data.parentId, data.index + 1)
         })
       }
     },
     {
       type: "command", content: "フォルダを追加", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
-          add_new_folder(node, data.parentId, data.index + 1)
+        bookmark.get(id, ([data]) => {
+          add_new_folder(data.parentId, data.index + 1)
+        })
+      }
+    },
+    {
+      type: "command", content: "複製", command: (id, node) => {
+        bookmark.get(id, ([data]) => {
+          bookmark.clone(data.parentId, id, data.index + 1)
         })
       }
     },
     { type: "partition" },
     {
       type: "command", content: "削除", command: (id, node) => {
-        chrome.bookmarks.remove(id)
-          .catch((e) => { menu_error(e) })
-        render_wrapper(node)
+        bookmark.remove(id, () => {
+          render_node(node)
+        })
       }
     },
   ],
@@ -100,16 +114,15 @@ const menu_data = {
     { type: "partition" },
     {
       type: "command", content: "名前を変更", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
+        bookmark.get(id, ([data]) => {
           form(
             "フォルダ名の編集",
             [{ title: "名前", type: "string", default_value: data.title }],
             "保存",
             (title) => {
-              chrome.bookmarks.update(id, { title })
-                .catch((e) => { menu_error(e) })
-              render_wrapper(node)
-              if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
+              bookmark.update(id, { title })
+              render_node(node)
+              render_id(id)
             }
           )
         })
@@ -117,54 +130,48 @@ const menu_data = {
     },
     {
       type: "command", content: "リンクを追加", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
-          add_new_link(node, data.parentId, data.index + 1)
+        bookmark.get(id, ([data]) => {
+          add_new_link(data.parentId, data.index + 1)
         })
       }
     },
     {
       type: "command", content: "フォルダを追加", command: (id, node) => {
-        chrome.bookmarks.get(id, ([data]) => {
-          add_new_folder(node, data.parentId, data.index + 1)
+        bookmark.get(id, ([data]) => {
+          add_new_folder(data.parentId, data.index + 1)
+        })
+      }
+    },
+    {
+      type: "command", content: "複製", command: (id, node) => {
+        bookmark.get(id, ([data]) => {
+          bookmark.clone(data.parentId, id, data.index + 1)
         })
       }
     },
     { type: "partition" },
     {
-      type: "command", content: "展開", command: (id, node) => {
-        chrome.bookmarks.getSubTree(id, ([folder_data]) => {
-          folder_data.children.forEach((child, i) => {
-            chrome.bookmarks.create({
-              index: folder_data.index + i + 1,
-              parentId: folder_data.parentId,
-              title: child.title,
-              url: child.url
-            })
-              .catch((e) => { menu_error(e) })
-            render_wrapper(node)
-          })
+      type: "command", content: "展開", command: async (id, node) => {
+        bookmark.get(id, ([folder_data]) => {
+          bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, false)
         })
       }
     },
     {
-      type: "command", content: "タイトルでソート", command: (id, node) => {
-        chrome.bookmarks.getChildren(id, (children) => {
-          children.sort((a, b) => a.title.localeCompare(b.title))
-          children.forEach((child, i) => {
-            chrome.bookmarks.move(child.id, { parentId: id, index: i })
-              .catch((e) => { menu_error(e) })
-          })
-          if (open_list[node + 1] && id === open_list[node + 1].dataset.id) { render_wrapper(node + 1) }
+      type: "command", content: "フォルダ内を展開", command: async (id, node) => {
+        bookmark.get(id, ([folder_data]) => {
+          bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, true)
         })
       }
     },
+    { type: "command", content: "分割", command: (id, node) => { } },
     { type: "partition" },
     {
       type: "command", content: "削除", command: (id, node) => {
-        chrome.bookmarks.removeTree(id)
-          .catch((e) => { menu_error(e) })
-        render_wrapper(node)
-        if (open_list[node + 1] && open_list[node + 1].dataset.id === id) { close(node + 1) }
+        bookmark.remove(id, () => {
+          render_node(node)
+          close_id(id)
+        })
       }
     },
   ]
@@ -198,7 +205,7 @@ function getDragAfterElement(container, y) {
 
 
 function open_path(path) {
-  chrome.bookmarks.getTree(([root]) => {
+  bookmark.getTree(([root]) => {
     main.innerHTML = ""
     open_list = []
     let node = 0
@@ -247,7 +254,7 @@ function add_wrapper(id, node, collapse) {
     add_menu(e, "title", folder_title, id, node)
   })
   const content = $(wrapper, "content")
-  render_wrapper(node)
+  render_node(node)
   wrapper.scrollIntoView()
   content.addEventListener('dragstart', function (e) {
     if (e.target.classList && e.target.classList.contains("entry-move")) {
@@ -264,10 +271,10 @@ function add_wrapper(id, node, collapse) {
     if (!dragEl) return
     if (dragParent.open && dragParent.node < node) return
     const afterIndex = getDragAfterElement(content, e.clientY).index
-    chrome.bookmarks.move(dragEl.dataset.id, { parentId: id })
-    chrome.bookmarks.move(dragEl.dataset.id, { index: afterIndex, parentId: id })
-    render_wrapper(dragParent.node)
-    render_wrapper(node)
+    bookmark.move(dragEl.dataset.id, { parentId: id })
+    bookmark.move(dragEl.dataset.id, { index: afterIndex, parentId: id })
+    render_node(dragParent.node)
+    render_node(node)
     dragEl = null
     dragParent = {}
   })
@@ -283,11 +290,11 @@ function add_wrapper(id, node, collapse) {
   })
 }
 
-function render_wrapper(node) {
-  const wrapper = open_list[node]
+function render_wrapper(wrapper) {
   const folder_title = wrapper.querySelector(".folder-title")
   const content = wrapper.querySelector(".content")
-  chrome.bookmarks.getSubTree(wrapper.dataset.id, ([folder_data]) => {
+  const node = Number(wrapper.dataset.node)
+  bookmark.getSubTree(wrapper.dataset.id, ([folder_data]) => {
     folder_title.textContent = folder_data.title
     content.innerHTML = ""
     folder_data.children.forEach((child) => {
@@ -382,19 +389,8 @@ function remove_menu() {
   }
 }
 
-function menu_error(e) {
-  dialog(
-    "実行時エラー",
-    `
-    操作が失敗しました。
-    ルートブックマークフォルダーでは一部の操作を実行できません。
-    ${e}
-    `
-  )
-}
-
 function open_urls(id, tree) {
-  chrome.bookmarks.getChildren(id, (children) => {
+  bookmark.getChildren(id, (children) => {
     children.forEach(child => {
       if (child.url) {
         chrome.tabs.create({ url: child.url, active: false })
@@ -405,7 +401,7 @@ function open_urls(id, tree) {
   })
 }
 
-function add_new_link(node, parentId, index) {
+function add_new_link(parentId, index) {
   form(
     "新しいリンク",
     [
@@ -414,21 +410,20 @@ function add_new_link(node, parentId, index) {
     ],
     "追加",
     (title, url) => {
-      chrome.bookmarks.create({ parentId, title, url, index })
-        .catch((e) => { menu_error(e) })
-      render_wrapper(node)
+      bookmark.create({ parentId, title, url, index })
+      render_id(parentId)
     }
   )
 }
-function add_new_folder(node, parentId, index) {
+
+function add_new_folder(parentId, index) {
   form(
     "新しいフォルダ",
     [{ title: "名前", type: "string", default_value: "新しいフォルダ" }],
     "追加",
     (title) => {
-      chrome.bookmarks.create({ parentId, title, index })
-        .catch((e) => { menu_error(e) })
-      render_wrapper(node)
+      bookmark.create({ parentId, title, index })
+      render_id(parentId)
     }
   )
 }
@@ -440,4 +435,23 @@ function $(parentElement, className, textContent, tagName) {
   parentElement.appendChild(result)
   return result
 }
+
+function render_node(node) {
+  render_wrapper(open_list[node])
+}
+
+export function render_id(id) {
+  if (!Array.isArray(id)) { id = [id] }
+  open_list
+    .filter((wrapper) => (id.includes(wrapper.dataset.id)))
+    .forEach((wrapper) => { render_wrapper(wrapper) })
+}
+
+function close_id(id) {
+  if (!Array.isArray(id)) { id = [id] }
+  let wrapper_data = open_list.map(wrapper => ({ node: Number(wrapper.dataset.node), id: wrapper.dataset.id }))
+  wrapper_data = wrapper_data.filter((data) => (id.includes(data.id)))
+  wrapper_data.forEach(({ node }) => { close(node) })
+}
+
 /* --------------------------------------------------------------------------------------------- */

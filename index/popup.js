@@ -1,3 +1,5 @@
+"use strict"
+
 export function form(form_title, arguments_data, button_title, call_back) {
   let arguments_list = []
   displayPopup()
@@ -22,11 +24,11 @@ export function form(form_title, arguments_data, button_title, call_back) {
     wrapper.appendChild(name)
     wrapper.appendChild(input)
     content.appendChild(wrapper)
-    if (i === 0) { input.scrollIntoView() }
+    if (i === 0) { input.focus() }
   })
   const buttons = document.getElementById("popup-buttons")
   buttons.innerHTML = ""
-  const button = document.createElement('div')
+  const button = document.createElement('button')
   button.className = "form-button-main"
   button.textContent = button_title
   button.addEventListener('click', function () {
@@ -34,7 +36,7 @@ export function form(form_title, arguments_data, button_title, call_back) {
     document.getElementById("popup-container").style.display = 'none'
   })
   buttons.appendChild(button)
-  const cancel = document.createElement('div')
+  const cancel = document.createElement('button')
   cancel.className = "form-button"
   cancel.textContent = "キャンセル"
   cancel.addEventListener('click', function () {
@@ -49,7 +51,25 @@ export function dialog(title, context) {
   const content = document.getElementById("popup-content")
   content.innerHTML = ""
   content.innerText = context
-  setButtonClose()
+  const buttons = document.getElementById("popup-buttons")
+  buttons.innerHTML = ""
+  const close = document.createElement('button')
+  close.className = "form-button"
+  close.textContent = "閉じる"
+  close.addEventListener('click', function () {
+    document.getElementById("popup-container").style.display = 'none'
+  })
+  buttons.appendChild(close)
+  close.focus()
+}
+
+export function menu_error(e) {
+  dialog(
+    "実行時エラー",
+    `操作が失敗しました。
+    ルートブックマークフォルダーでは一部の操作を実行できない場合があります。
+    ${e}`
+  )
 }
 
 function displayPopup() {
@@ -58,16 +78,4 @@ function displayPopup() {
 
 function setTitle(form_title) {
   document.getElementById("popup-title").textContent = form_title
-}
-
-function setButtonClose() {
-  const buttons = document.getElementById("popup-buttons")
-  buttons.innerHTML = ""
-  const close = document.createElement('div')
-  close.className = "form-button"
-  close.textContent = "閉じる"
-  close.addEventListener('click', function () {
-    document.getElementById("popup-container").style.display = 'none'
-  })
-  buttons.appendChild(close)
 }
