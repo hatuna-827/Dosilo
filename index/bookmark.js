@@ -21,6 +21,15 @@ function get_children(id, callback) {
     .catch((e) => { menu_error(e) })
 }
 
+function get_with_children(id, callback) {
+  get(id, ([data]) => {
+    get_children(id, (children) => {
+      data.children = children
+      callback(data)
+    })
+  })
+}
+
 function get_sub_tree(id, callback) {
   chrome.bookmarks.getSubTree(id)
     .then((result) => { callback(result) })
@@ -164,6 +173,7 @@ export const bookmark = {
   create,
   get,
   getChildren: get_children,
+  getWithChildren: get_with_children,
   getSubTree: get_sub_tree,
   getTree: get_tree,
   move,

@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "description": "Bookmark Controller",
   "permissions": [
-    "bookmarks",
+    "tabs",
     "storage",
+    "bookmarks",
     "contextMenus"
   ],
   "background": {

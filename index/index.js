@@ -2,7 +2,7 @@
 
 /* - import ------------------------------------------------------------------------------------ */
 
-import { form, dialog, menu_error } from "./popup.js"
+import { form, dialog } from "./popup.js"
 import { bookmark } from "./bookmark.js"
 
 /* - const ------------------------------------------------------------------------------------- */
@@ -41,16 +41,8 @@ const menu_data = {
         })
       }
     },
-    {
-      type: "command", content: "リンクを追加", command: (id, node) => {
-        add_new_link(id)
-      }
-    },
-    {
-      type: "command", content: "フォルダを追加", command: (id, node) => {
-        add_new_folder(id)
-      }
-    },
+    { type: "command", content: "リンクを追加", command: (id, node) => { add_new_link(id) } },
+    { type: "command", content: "フォルダを追加", command: (id, node) => { add_new_folder(id) } },
     { type: "partition" },
     { type: "command", content: "タイトルでソート", command: (id, node) => { bookmark.sort.title(id) } },
     { type: "command", content: "並び順を反転", command: (id, node) => { bookmark.sort.reverse(id) } },
@@ -151,20 +143,48 @@ const menu_data = {
     },
     { type: "partition" },
     {
-      type: "command", content: "展開", command: async (id, node) => {
+      type: "command", content: "リンクのみ展開", command: (id, node) => {
         bookmark.get(id, ([folder_data]) => {
           bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, false)
         })
       }
     },
     {
-      type: "command", content: "フォルダ内を展開", command: async (id, node) => {
+      type: "command", content: "フォルダ内を展開", command: (id, node) => {
         bookmark.get(id, ([folder_data]) => {
           bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, true)
         })
       }
     },
-    { type: "command", content: "分割", command: (id, node) => { } },
+    {
+      type: "command", content: "分割", command: (id, node) => {
+        form(
+          "分割",
+          [{ title: "分割数", type: "number", default_value: 10 }],
+          "決定",
+          (division_count) => {
+            bookmark.getWithChildren(id, (data) => {
+              let children = data.children
+              bookmark.create(
+                { parentId: data.parentId, index: data.index + 1, title: `分割-${data.title}` },
+                (current_folder) => {
+                  let count = 0
+                  while (children.length !== 0) {
+                    const division_children = children.splice(0, division_count)
+                    bookmark.create({ parentId: current_folder.id, title: `分割フォルダ${count}` }, (division_folder) => {
+                      division_children.forEach((child) => {
+                        bookmark.clone(division_folder.id, child.id)
+                      })
+                    })
+                    ++count
+                  }
+                  render_node(node)
+                })
+            })
+          }
+        )
+      }
+    },
     { type: "partition" },
     {
       type: "command", content: "削除", command: (id, node) => {
@@ -402,18 +422,20 @@ function open_urls(id, tree) {
 }
 
 function add_new_link(parentId, index) {
-  form(
-    "新しいリンク",
-    [
-      { title: "名前", type: "string", default_value: document.title },
-      { title: "URL", type: "string", default_value: window.location.href },
-    ],
-    "追加",
-    (title, url) => {
-      bookmark.create({ parentId, title, url, index })
-      render_id(parentId)
-    }
-  )
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    form(
+      "新しいリンク",
+      [
+        { title: "名前", type: "string", default_value: tab.title ?? "" },
+        { title: "URL", type: "string", default_value: tab.url ?? "" },
+      ],
+      "追加",
+      (title, url) => {
+        bookmark.create({ parentId, title, url, index })
+        render_id(parentId)
+      }
+    )
+  })
 }
 
 function add_new_folder(parentId, index) {
