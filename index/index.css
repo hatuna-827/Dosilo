@@ -39,6 +39,7 @@ body {
 #popup-content {
 	padding: 7px 5px;
 	max-height: 300px;
+	white-space: pre;
 	overflow-y: auto;
 }
 
@@ -163,6 +164,8 @@ body {
 	text-decoration: none;
 	cursor: pointer;
 	border-radius: 3px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .folder-title:hover,

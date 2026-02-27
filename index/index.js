@@ -26,7 +26,7 @@ const menu_data = {
     },
     { type: "partition" },
     {
-      type: "command", content: "名前を変更", command: (id, node) => {
+      type: "command", content: "名前を変更", command: (id) => {
         bookmark.get(id, ([data]) => {
           form(
             "フォルダ名の編集",
@@ -41,15 +41,15 @@ const menu_data = {
         })
       }
     },
-    { type: "command", content: "リンクを追加", command: (id, node) => { add_new_link(id) } },
-    { type: "command", content: "フォルダを追加", command: (id, node) => { add_new_folder(id) } },
+    { type: "command", content: "リンクを追加", command: (id) => { add_new_link(id) } },
+    { type: "command", content: "フォルダを追加", command: (id) => { add_new_folder(id) } },
     { type: "partition" },
-    { type: "command", content: "タイトルでソート", command: (id, node) => { bookmark.sort.title(id) } },
-    { type: "command", content: "並び順を反転", command: (id, node) => { bookmark.sort.reverse(id) } },
-    { type: "command", content: "フォルダーを先頭へ", command: (id, node) => { bookmark.sort.folder(id) } },
+    { type: "command", content: "タイトルでソート", command: (id) => { bookmark.sort.title(id) } },
+    { type: "command", content: "並び順を反転", command: (id) => { bookmark.sort.reverse(id) } },
+    { type: "command", content: "フォルダを先頭へ", command: (id) => { bookmark.sort.folder(id) } },
     { type: "partition" },
-    { type: "command", content: "重複したURLを削除", command: (id, node) => { bookmark.remove.duplicate(id) } },
-    { type: "command", content: "空のフォルダーを削除", command: (id, node) => { bookmark.remove.empty(id) } },
+    { type: "command", content: "重複したURLを削除", command: (id) => { bookmark.remove.duplicate(id) } },
+    { type: "command", content: "空のフォルダを削除", command: (id) => { bookmark.remove.empty(id) } },
   ],
   url: [
     {
@@ -71,27 +71,45 @@ const menu_data = {
     },
     { type: "partition" },
     {
-      type: "command", content: "リンクを追加", command: (id, node) => {
+      type: "command", content: "リンクを追加", command: (id) => {
         bookmark.get(id, ([data]) => {
           add_new_link(data.parentId, data.index + 1)
         })
       }
     },
     {
-      type: "command", content: "フォルダを追加", command: (id, node) => {
+      type: "command", content: "フォルダを追加", command: (id) => {
         bookmark.get(id, ([data]) => {
           add_new_folder(data.parentId, data.index + 1)
         })
       }
     },
     {
-      type: "command", content: "複製", command: (id, node) => {
+      type: "command", content: "複製", command: (id) => {
         bookmark.get(id, ([data]) => {
           bookmark.clone(data.parentId, id, data.index + 1)
         })
       }
     },
     { type: "partition" },
+    {
+      type: "command", content: "詳細を見る", command: (id) => {
+        bookmark.getWithChildren(id, (data) => {
+          dialog(
+            `${id} の詳細`,
+            [
+              `ID : ${data.id}`,
+              `種類 : ブックマーク`,
+              `タイトル : "${data.title}"`,
+              `URL : ${data.url}`,
+              `作成日時 : ${time_to_string(data.dateAdded)}`,
+              `アクセス日時 : ${time_to_string(data.dateLastUsed)}`,
+              `親フォルダID : ${data.parentId}`,
+            ]
+          )
+        })
+      }
+    },
     {
       type: "command", content: "削除", command: (id, node) => {
         bookmark.remove(id, () => {
@@ -121,21 +139,21 @@ const menu_data = {
       }
     },
     {
-      type: "command", content: "リンクを追加", command: (id, node) => {
+      type: "command", content: "リンクを追加", command: (id) => {
         bookmark.get(id, ([data]) => {
           add_new_link(data.parentId, data.index + 1)
         })
       }
     },
     {
-      type: "command", content: "フォルダを追加", command: (id, node) => {
+      type: "command", content: "フォルダを追加", command: (id) => {
         bookmark.get(id, ([data]) => {
           add_new_folder(data.parentId, data.index + 1)
         })
       }
     },
     {
-      type: "command", content: "複製", command: (id, node) => {
+      type: "command", content: "複製", command: (id) => {
         bookmark.get(id, ([data]) => {
           bookmark.clone(data.parentId, id, data.index + 1)
         })
@@ -143,14 +161,14 @@ const menu_data = {
     },
     { type: "partition" },
     {
-      type: "command", content: "リンクのみ展開", command: (id, node) => {
+      type: "command", content: "リンクのみ展開", command: (id) => {
         bookmark.get(id, ([folder_data]) => {
           bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, false)
         })
       }
     },
     {
-      type: "command", content: "フォルダ内を展開", command: (id, node) => {
+      type: "command", content: "フォルダ内を展開", command: (id) => {
         bookmark.get(id, ([folder_data]) => {
           bookmark.deployFolder(folder_data.parentId, id, folder_data.index + 1, true)
         })
@@ -187,6 +205,24 @@ const menu_data = {
     },
     { type: "partition" },
     {
+      type: "command", content: "詳細を見る", command: (id) => {
+        bookmark.getWithChildren(id, (data) => {
+          dialog(
+            `${id} の詳細`,
+            [
+              `ID : ${data.id}`,
+              `種類 : ブックマークフォルダ`,
+              `タイトル : "${data.title}"`,
+              `子要素の数 : ${data.children.length}`,
+              `作成日時 : ${time_to_string(data.dateAdded)}`,
+              `更新日時 : ${time_to_string(data.dateGroupModified)}`,
+              `親フォルダID : ${data.parentId}`,
+            ]
+          )
+        })
+      }
+    },
+    {
       type: "command", content: "削除", command: (id, node) => {
         bookmark.remove(id, () => {
           render_node(node)
@@ -200,7 +236,7 @@ const menu_data = {
 /* - init -------------------------------------------------------------------------------------- */
 
 chrome.storage.local.get("Dosilo", ({ Dosilo = {} }) => {
-  const default_path = Dosilo.default_path || ['1']
+  const default_path = Dosilo.default_path ?? ['1']
   open_path(default_path)
 })
 
@@ -225,27 +261,35 @@ function getDragAfterElement(container, y) {
 
 
 function open_path(path) {
-  bookmark.getTree(([root]) => {
-    main.innerHTML = ""
-    open_list = []
-    let node = 0
-    let data = root
-    while (node !== path.length) {
-      const next = data.children.find(child => child.id === path[node])
-      if (!next) {
-        dialog("初期エラー", "デフォルトのパスが見つかりません。")
-        path = path.slice(0, node)
-        if (node === 0) { path = ['1'] }
-        break
-      }
-      data = next
-      ++node
-    }
-    add_wrapper('0', 0, true)
-    path.forEach((id, node) => {
-      add_wrapper(id, node + 1, node !== path.length - 1)
-    })
+  main.innerHTML = ""
+  open_list = []
+  add_wrapper('0', 0, true)
+  open_folder(path, 1, () => {
+    open_list.slice(-1)[0].classList.remove("collapse")
+    dialog(
+      "初期エラー",
+      [
+        "デフォルトのパスが見つかりません。",
+        path.join('>')
+      ]
+    )
   })
+}
+
+function open_folder(path, node, error_callback) {
+  const id = path[0]
+  const not_last = path.length !== 1
+  add_wrapper(id, node, not_last)
+  if (not_last) {
+    const next_id = path[1]
+    bookmark.get(next_id, ([children]) => {
+      if (children.parentId === id) {
+        open_folder(path.slice(1), node + 1, error_callback)
+      } else {
+        error_callback()
+      }
+    }, error_callback)
+  }
 }
 
 function add_wrapper(id, node, collapse) {
@@ -314,13 +358,14 @@ function render_wrapper(wrapper) {
   const folder_title = wrapper.querySelector(".folder-title")
   const content = wrapper.querySelector(".content")
   const node = Number(wrapper.dataset.node)
-  bookmark.getSubTree(wrapper.dataset.id, ([folder_data]) => {
+  bookmark.getWithChildren(wrapper.dataset.id, (folder_data) => {
     folder_title.textContent = folder_data.title
     content.innerHTML = ""
     folder_data.children.forEach((child) => {
       const entry = document.createElement('div')
       entry.className = "entry"
       entry.dataset.id = child.id
+      entry.title = child.title
       content.appendChild(entry)
       const move = document.createElement('span')
       move.className = "entry-move"
@@ -338,7 +383,7 @@ function render_wrapper(wrapper) {
         entry.addEventListener('contextmenu', function (e) {
           add_menu(e, "url", this, child.id, node)
         })
-      } else if (child.children) {
+      } else {
         move.textContent = "📁"
         const folder = document.createElement('span')
         folder.className = "folder entry-title"
@@ -474,6 +519,17 @@ function close_id(id) {
   let wrapper_data = open_list.map(wrapper => ({ node: Number(wrapper.dataset.node), id: wrapper.dataset.id }))
   wrapper_data = wrapper_data.filter((data) => (id.includes(data.id)))
   wrapper_data.forEach(({ node }) => { close(node) })
+}
+
+function time_to_string(epoch_ms) {
+  const time = new Date(epoch_ms)
+  const year = time.getFullYear()
+  const month = time.getMonth()
+  const date = time.getDate()
+  const hours = time.getHours()
+  const minutes = time.getMinutes()
+  const seconds = time.getSeconds()
+  return `${year}/${month}/${date},${hours}:${minutes}:${seconds}`
 }
 
 /* --------------------------------------------------------------------------------------------- */

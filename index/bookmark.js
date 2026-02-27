@@ -3,69 +3,69 @@
 import { render_id } from "./index.js"
 import { menu_error } from "./popup.js"
 
-function create(CreateDetails, callback = () => { }) {
+function create(CreateDetails, callback = () => { }, error_callback = menu_error) {
   chrome.bookmarks.create(CreateDetails)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function get(id, callback) {
+function get(id, callback, error_callback = menu_error) {
   chrome.bookmarks.get(id)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function get_children(id, callback) {
+function get_children(id, callback, error_callback = menu_error) {
   chrome.bookmarks.getChildren(id)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function get_with_children(id, callback) {
+function get_with_children(id, callback, error_callback = menu_error) {
   get(id, ([data]) => {
     get_children(id, (children) => {
       data.children = children
       callback(data)
-    })
-  })
+    }, error_callback)
+  }, error_callback)
 }
 
-function get_sub_tree(id, callback) {
+function get_sub_tree(id, callback, error_callback = menu_error) {
   chrome.bookmarks.getSubTree(id)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function get_tree(callback) {
+function get_tree(callback, error_callback = menu_error) {
   chrome.bookmarks.getTree()
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function move(id, destination, callback = () => { }) {
+function move(id, destination, callback = () => { }, error_callback = menu_error) {
   chrome.bookmarks.move(id, destination)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
-function remove(id, callback = () => { }) {
+function remove(id, callback = () => { }, error_callback = menu_error) {
   get(id, ([data]) => {
     if (data.url) {
       chrome.bookmarks.remove(id)
         .then(callback)
-        .catch((e) => { menu_error(e) })
+        .catch(error_callback)
     } else {
       chrome.bookmarks.removeTree(id)
         .then(callback)
-        .catch((e) => { menu_error(e) })
+        .catch(error_callback)
     }
   })
 }
 
-function update(id, changes, callback = () => { }) {
+function update(id, changes, callback = () => { }, error_callback = menu_error) {
   chrome.bookmarks.update(id, changes)
-    .then((result) => { callback(result) })
-    .catch((e) => { menu_error(e) })
+    .then(callback)
+    .catch(error_callback)
 }
 
 function clone(parentId, id, index) {
@@ -174,8 +174,8 @@ export const bookmark = {
   get,
   getChildren: get_children,
   getWithChildren: get_with_children,
-  getSubTree: get_sub_tree,
-  getTree: get_tree,
+  // getSubTree: get_sub_tree,
+  // getTree: get_tree,
   move,
   remove,
   update,

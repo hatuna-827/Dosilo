@@ -46,6 +46,9 @@ export function form(form_title, arguments_data, button_title, call_back) {
 }
 
 export function dialog(title, context) {
+  if (Array.isArray(context)) {
+    context = context.join('\n')
+  }
   displayPopup()
   setTitle(title)
   const content = document.getElementById("popup-content")
@@ -66,9 +69,10 @@ export function dialog(title, context) {
 export function menu_error(e) {
   dialog(
     "実行時エラー",
-    `操作が失敗しました。
-    ルートブックマークフォルダーでは一部の操作を実行できない場合があります。
-    ${e}`
+    [
+      "操作が失敗しました。",
+      e,
+    ]
   )
 }
 
