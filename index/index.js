@@ -2,7 +2,7 @@
 
 /* - import ------------------------------------------------------------------------------------ */
 
-import { form, dialog } from "./popup.js"
+import { form, dialog, confirm } from "./popup.js"
 import { bookmark } from "./bookmark.js"
 
 /* - const ------------------------------------------------------------------------------------- */
@@ -112,15 +112,33 @@ const menu_data = {
     },
     {
       type: "command", content: "削除", command: (id, node) => {
-        bookmark.remove(id, () => {
-          render_node(node)
-        })
+        confirm(
+          "リンクを削除",
+          "この操作は取り消せません。",
+          "削除",
+          () => {
+            bookmark.remove(id, () => {
+              render_node(node)
+            })
+          }
+        )
       }
     },
   ],
   folder: [
-    { type: "command", content: "すべて開く", command: (id) => { open_urls(id, false) } },
-    { type: "command", content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
+    {
+      type: "group", content: "すべて開く", command: (id) => { open_urls(id, false) }, children: [
+        { type: "command", content: "フォルダ内をすべて開く", command: (id) => { open_urls(id, true) } },
+        {
+          type: "command", content: "フォルダ内をすべて開いて削除", command: (id, node) => {
+            open_urls(id, true)
+            bookmark.remove(id, () => {
+              render_node(node)
+            })
+          }
+        },
+      ]
+    },
     { type: "partition" },
     {
       type: "command", content: "名前を変更", command: (id, node) => {
@@ -224,10 +242,17 @@ const menu_data = {
     },
     {
       type: "command", content: "削除", command: (id, node) => {
-        bookmark.remove(id, () => {
-          render_node(node)
-          close_id(id)
-        })
+        confirm(
+          "フォルダを削除",
+          "この操作は取り消せません。",
+          "削除",
+          () => {
+            bookmark.remove(id, () => {
+              render_node(node)
+              close_id(id)
+            })
+          }
+        )
       }
     },
   ]
@@ -439,6 +464,9 @@ function add_menu_items(menu_items, pos, id, node) {
       const group_items = document.createElement('div')
       group_items.className = "group-items"
       add_menu_items(menu_item.children, group_items, id, node)
+      item.addEventListener('click', function (e) {
+        if (e.target === this) { menu_item.command(id, node) }
+      })
       item.appendChild(group_items)
       pos.appendChild(item)
     }

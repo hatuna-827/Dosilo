@@ -216,3 +216,36 @@ body {
 .menu .partition {
 	margin: 3px 0px;
 }
+
+.menu .group {
+	position: relative;
+}
+
+.menu .group::before {
+	content: '';
+	display: block;
+	position: absolute;
+	top: 7px;
+	right: 10px;
+	height: 6px;
+	width: 6px;
+	border: 1px solid;
+	border-color: #888 #888 #0000 #0000;
+	transform: rotate(45deg);
+}
+
+.menu .group:hover .group-items {
+	display: block;
+}
+
+.menu .group-items {
+	display: none;
+	position: absolute;
+	top: 0px;
+	left: 100%;
+	padding: 5px;
+	width: 200px;
+	background-color: #fff;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+}

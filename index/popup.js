@@ -33,37 +33,56 @@ export function form(form_title, arguments_data, button_title, call_back) {
   button.textContent = button_title
   button.addEventListener('click', function () {
     call_back(...arguments_list.map((input) => input.type === "text" ? input.value : input.valueAsNumber))
-    document.getElementById("popup-container").style.display = 'none'
+    hidePopup()
   })
   buttons.appendChild(button)
   const cancel = document.createElement('button')
   cancel.className = "form-button"
   cancel.textContent = "キャンセル"
   cancel.addEventListener('click', function () {
-    document.getElementById("popup-container").style.display = 'none'
+    hidePopup()
   })
   buttons.appendChild(cancel)
 }
 
 export function dialog(title, context) {
-  if (Array.isArray(context)) {
-    context = context.join('\n')
-  }
   displayPopup()
   setTitle(title)
-  const content = document.getElementById("popup-content")
-  content.innerHTML = ""
-  content.innerText = context
+  setContext(context)
   const buttons = document.getElementById("popup-buttons")
   buttons.innerHTML = ""
   const close = document.createElement('button')
   close.className = "form-button"
   close.textContent = "閉じる"
   close.addEventListener('click', function () {
-    document.getElementById("popup-container").style.display = 'none'
+    hidePopup()
   })
   buttons.appendChild(close)
   close.focus()
+}
+
+export function confirm(title, context, button_title, call_back) {
+  displayPopup()
+  setTitle(title)
+  setContext(context)
+  const buttons = document.getElementById("popup-buttons")
+  buttons.innerHTML = ""
+  const button = document.createElement('button')
+  button.className = "form-button-main"
+  button.textContent = button_title
+  button.addEventListener('click', function () {
+    call_back()
+    hidePopup()
+  })
+  buttons.appendChild(button)
+  button.focus()
+  const cancel = document.createElement('button')
+  cancel.className = "form-button"
+  cancel.textContent = "キャンセル"
+  cancel.addEventListener('click', function () {
+    hidePopup()
+  })
+  buttons.appendChild(cancel)
 }
 
 export function menu_error(e) {
@@ -80,6 +99,19 @@ function displayPopup() {
   document.getElementById("popup-container").style.display = 'flex'
 }
 
+function hidePopup() {
+  document.getElementById("popup-container").style.display = 'none'
+}
+
 function setTitle(form_title) {
   document.getElementById("popup-title").textContent = form_title
+}
+
+function setContext(context) {
+  if (Array.isArray(context)) {
+    context = context.join('\n')
+  }
+  const content = document.getElementById("popup-content")
+  content.innerHTML = ""
+  content.innerText = context
 }
