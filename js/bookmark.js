@@ -15,6 +15,34 @@ function get(id, callback, error_callback = menu_error) {
     .catch(error_callback)
 }
 
+function get_children_count(id, callback, error_callback = menu_error) {
+  get_sub_tree(id, ([data]) => {
+    let direct = { total: data.children.length, folder: 0, link: 0 }
+    data.children.forEach((child) => {
+      if (child.children) { ++direct.folder } else { ++direct.link }
+    })
+    const count = children_count(data.children)
+    count.direct = direct
+    callback(count)
+  }, error_callback)
+}
+
+function children_count(children) {
+  let count = { total: children.length, folder: 0, link: 0 }
+  children.forEach((child) => {
+    if (child.children) {
+      const folder_count = children_count(child.children)
+      count.total += folder_count.total
+      count.folder += folder_count.folder
+      count.link += folder_count.link
+      ++count.folder
+    } else {
+      ++count.link
+    }
+  })
+  return count
+}
+
 function get_children(id, callback, error_callback = menu_error) {
   chrome.bookmarks.getChildren(id)
     .then(callback)
@@ -172,6 +200,7 @@ remove.empty = remove_empty_folders
 export const bookmark = {
   create,
   get,
+  getChildrenCount: get_children_count,
   getChildren: get_children,
   getWithChildren: get_with_children,
   // getSubTree: get_sub_tree,

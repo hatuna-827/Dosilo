@@ -96,14 +96,14 @@ const menu_data = {
       type: "command", content: "詳細を見る", command: (id) => {
         bookmark.getWithChildren(id, (data) => {
           dialog(
-            `${id} の詳細`,
+            `リンクの詳細`,
             [
               `ID : ${data.id}`,
               `種類 : ブックマーク`,
               `タイトル : "${data.title}"`,
               `URL : ${data.url}`,
-              `作成日時 : ${time_to_string(data.dateAdded)}`,
-              `アクセス日時 : ${time_to_string(data.dateLastUsed)}`,
+              `作成日時 : ${time_to_string(data.dateAdded, "記録なし")}`,
+              `アクセス日時 : ${time_to_string(data.dateLastUsed, "アクセスなし")}`,
               `親フォルダID : ${data.parentId}`,
             ]
           )
@@ -224,19 +224,26 @@ const menu_data = {
     { type: "partition" },
     {
       type: "command", content: "詳細を見る", command: (id) => {
-        bookmark.getWithChildren(id, (data) => {
-          dialog(
-            `${id} の詳細`,
-            [
-              `ID : ${data.id}`,
-              `種類 : ブックマークフォルダ`,
-              `タイトル : "${data.title}"`,
-              `子要素の数 : ${data.children.length}`,
-              `作成日時 : ${time_to_string(data.dateAdded)}`,
-              `更新日時 : ${time_to_string(data.dateGroupModified)}`,
-              `親フォルダID : ${data.parentId}`,
-            ]
-          )
+        bookmark.getChildrenCount(id, (count) => {
+          bookmark.get(id, ([data]) => {
+            dialog(
+              `フォルダの詳細`,
+              [
+                `ID : ${data.id}`,
+                `種類 : ブックマークフォルダ`,
+                `タイトル : "${data.title}"`,
+                `要素数 : ${count.direct.total}`,
+                `  リンク数 : ${count.direct.link}`,
+                `  フォルダ数 : ${count.direct.folder}`,
+                `内容数 : ${count.total}`,
+                `  リンク数 : ${count.link}`,
+                `  フォルダ数 : ${count.folder}`,
+                `作成日時 : ${time_to_string(data.dateAdded)}`,
+                `更新日時 : ${time_to_string(data.dateGroupModified)}`,
+                `親フォルダID : ${data.parentId}`,
+              ]
+            )
+          })
         })
       }
     },
@@ -549,10 +556,11 @@ function close_id(id) {
   wrapper_data.forEach(({ node }) => { close(node) })
 }
 
-function time_to_string(epoch_ms) {
+function time_to_string(epoch_ms, default_value) {
+  if (epoch_ms === undefined) { return default_value }
   const time = new Date(epoch_ms)
   const year = time.getFullYear()
-  const month = time.getMonth()
+  const month = Number(time.getMonth()) + 1
   const date = time.getDate()
   const hours = time.getHours()
   const minutes = time.getMinutes()

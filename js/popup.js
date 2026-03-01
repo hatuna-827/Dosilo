@@ -1,5 +1,21 @@
 "use strict"
 
+const container = document.createElement('div')
+container.id = "popup-container"
+document.body.appendChild(container)
+const wrapper = document.createElement('div')
+wrapper.id = "popup-wrapper"
+container.appendChild(wrapper)
+const title = document.createElement('div')
+title.id = "popup-title"
+wrapper.appendChild(title)
+const content = document.createElement('div')
+content.id = "popup-content"
+wrapper.appendChild(content)
+const buttons = document.createElement('div')
+buttons.id = "popup-buttons"
+wrapper.appendChild(buttons)
+
 export function form(form_title, arguments_data, button_title, call_back) {
   let arguments_list = []
   displayPopup()
