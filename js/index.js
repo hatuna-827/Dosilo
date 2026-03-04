@@ -132,6 +132,7 @@ const menu_data = {
         {
           type: "command", content: "フォルダ内をすべて開いて削除", command: (id, node) => {
             open_urls(id, true)
+            close_id(id)
             bookmark.remove(id, () => {
               render_node(node)
             })
