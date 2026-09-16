@@ -3,6 +3,7 @@
 	"name": "Dosilo",
 	"version": "1.0.0",
 	"description": "Bookmark Controller",
+	"incognito": "split",
 	"permissions": ["tabs", "storage", "bookmarks", "contextMenus"],
 	"background": {
 		"service_worker": "background.js"

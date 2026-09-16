@@ -6,6 +6,7 @@
 body {
 	margin: 0px;
 	min-height: 300px;
+	min-width: 400px;
 }
 
 #popup-container {
