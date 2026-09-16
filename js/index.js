@@ -149,6 +149,25 @@ const menu_data = {
 		{ type: 'partition' },
 		{
 			type: 'command',
+			content: 'タイトルをコピー',
+			command: id => {
+				bookmark.get(id, ([data]) => {
+					navigator.clipboard.writeText(data.title)
+				})
+			},
+		},
+		{
+			type: 'command',
+			content: 'URLをコピー',
+			command: id => {
+				bookmark.get(id, ([data]) => {
+					navigator.clipboard.writeText(data.url)
+				})
+			},
+		},
+		{ type: 'partition' },
+		{
+			type: 'command',
 			content: '詳細を見る',
 			command: id => {
 				bookmark.getWithChildren(id, data => {
@@ -317,6 +336,33 @@ const menu_data = {
 						})
 					}
 				)
+			},
+		},
+		{ type: 'partition' },
+		{
+			type: 'command',
+			content: 'タイトルをコピー',
+			command: id => {
+				bookmark.getChildren(id, data => {
+					let text = ''
+					data.forEach(({ title }) => {
+						text += `${title}\n`
+					})
+					navigator.clipboard.writeText(text)
+				})
+			},
+		},
+		{
+			type: 'command',
+			content: 'URLをコピー',
+			command: id => {
+				bookmark.getChildren(id, data => {
+					let text = ''
+					data.forEach(({ url }) => {
+						text += `${url}\n`
+					})
+					navigator.clipboard.writeText(text)
+				})
 			},
 		},
 		{ type: 'partition' },
